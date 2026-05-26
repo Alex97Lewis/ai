@@ -101,6 +101,7 @@ trait ParsesTextResponses
             cacheWriteInputTokens: $usage['prompt_tokens_details']['cache_write_tokens'] ?? 0,
             cacheReadInputTokens: $usage['prompt_tokens_details']['cached_tokens'] ?? 0,
             reasoningTokens: $usage['completion_tokens_details']['reasoning_tokens'] ?? 0,
+            cost: $usage['cost'] ?? 0.0,
         );
     }
 
