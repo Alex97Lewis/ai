@@ -38,6 +38,7 @@ class EmbeddingsResponse implements Arrayable, Countable, IteratorAggregate, Jso
             'embeddings' => $this->embeddings,
             'tokens' => $this->tokens,
             'meta' => $this->meta,
+            'usage' => $this->usage,
         ];
     }
 
