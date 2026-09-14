@@ -8,10 +8,12 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Laravel\Ai\Contracts\Files\TranscribableAudio;
 use Laravel\Ai\Contracts\Gateway\Gateway;
+use Laravel\Ai\Contracts\Gateway\RerankingGateway;
 use Laravel\Ai\Contracts\Gateway\StepTextGateway;
 use Laravel\Ai\Contracts\Providers\AudioProvider;
 use Laravel\Ai\Contracts\Providers\EmbeddingProvider;
 use Laravel\Ai\Contracts\Providers\ImageProvider;
+use Laravel\Ai\Contracts\Providers\RerankingProvider;
 use Laravel\Ai\Contracts\Providers\SupportsWebFetch;
 use Laravel\Ai\Contracts\Providers\SupportsWebSearch;
 use Laravel\Ai\Contracts\Providers\TranscriptionProvider;
@@ -29,14 +31,16 @@ use Laravel\Ai\Providers\Tools\WebSearch;
 use Laravel\Ai\Responses\AudioResponse;
 use Laravel\Ai\Responses\Data\GeneratedImage;
 use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\RankedDocument;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\EmbeddingsResponse;
 use Laravel\Ai\Responses\ImageResponse;
+use Laravel\Ai\Responses\RerankingResponse;
 use Laravel\Ai\Responses\TranscriptionResponse;
 use LogicException;
 use RuntimeException;
 
-class OpenRouterGateway implements Gateway, StepTextGateway
+class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
 {
     use Concerns\BuildsTextRequests;
     use Concerns\CreatesOpenRouterClient;
@@ -351,6 +355,42 @@ class OpenRouterGateway implements Gateway, StepTextGateway
         return new EmbeddingsResponse(
             (new Collection($data['data'] ?? []))->pluck('embedding')->all(),
             $data['usage']['prompt_tokens'] ?? 0,
+            new Meta($provider->name(), $model),
+        );
+    }
+
+    /**
+     * Rerank the given documents based on their relevance to the query.
+     *
+     * @param  array<int, string>  $documents
+     */
+    public function rerank(
+        RerankingProvider $provider,
+        string $model,
+        array $documents,
+        string $query,
+        ?int $limit = null
+    ): RerankingResponse {
+        $response = $this->withErrorHandling(
+            $provider->name(),
+            fn () => $this->client($provider)->post('rerank', array_filter([
+                'model' => $model,
+                'query' => $query,
+                'documents' => $documents,
+                'top_n' => $limit,
+            ])),
+        );
+
+        $data = $response->json();
+
+        $results = (new Collection($data['results'] ?? []))->map(fn (array $result): RankedDocument => new RankedDocument(
+            index: $result['index'],
+            document: $documents[$result['index']],
+            score: $result['relevance_score'],
+        ))->all();
+
+        return new RerankingResponse(
+            $results,
             new Meta($provider->name(), $model),
         );
     }
