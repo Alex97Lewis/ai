@@ -360,9 +360,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
     }
 
     /**
-     * Rerank the given documents based on their relevance to the query.
-     *
-     * @param  array<int, string>  $documents
+     * {@inheritdoc}
      */
     public function rerank(
         RerankingProvider $provider,
