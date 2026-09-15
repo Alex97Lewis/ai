@@ -51,17 +51,17 @@ trait MapsAttachments
                 ],
                 $attachment instanceof Base64Document => [
                     'type' => 'file',
-                    'file' => array_filter([
-                        'filename' => $attachment->name(),
+                    'file' => [
+                        'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mime),
                         'file_data' => 'data:'.$attachment->mime.';base64,'.$attachment->base64,
-                    ]),
+                    ],
                 ],
                 $attachment instanceof LocalDocument => [
                     'type' => 'file',
-                    'file' => array_filter([
-                        'filename' => $attachment->name(),
+                    'file' => [
+                        'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
                         'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(file_get_contents($attachment->path)),
-                    ]),
+                    ],
                 ],
                 $attachment instanceof RemoteDocument => [
                     'type' => 'file',
@@ -72,12 +72,12 @@ trait MapsAttachments
                 ],
                 $attachment instanceof StoredDocument => [
                     'type' => 'file',
-                    'file' => array_filter([
-                        'filename' => $attachment->name(),
+                    'file' => [
+                        'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
                         'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(
                             (string) Storage::disk($attachment->disk)->get($attachment->path)
                         ),
-                    ]),
+                    ],
                 ],
                 $attachment instanceof UploadedFile && $this->isImage($attachment) => [
                     'type' => 'image_url',
@@ -107,5 +107,18 @@ trait MapsAttachments
             'image/webp',
         ],
             true);
+    }
+
+    protected function fallbackFilename(?string $mimeType): string
+    {
+        return 'document'.match ($mimeType) {
+            'text/plain' => '.txt',
+            'text/markdown' => '.md',
+            'text/csv' => '.csv',
+            'text/html' => '.html',
+            'application/pdf' => '.pdf',
+            'application/json' => '.json',
+            default => '',
+        };
     }
 }
