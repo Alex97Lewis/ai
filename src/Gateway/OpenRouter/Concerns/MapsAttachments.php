@@ -6,17 +6,15 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use Laravel\Ai\Files\Audio;
 use Laravel\Ai\Files\Base64Audio;
 use Laravel\Ai\Files\Base64Document;
 use Laravel\Ai\Files\Base64Image;
 use Laravel\Ai\Files\File;
-use Laravel\Ai\Files\LocalAudio;
 use Laravel\Ai\Files\LocalDocument;
 use Laravel\Ai\Files\LocalImage;
-use Laravel\Ai\Files\RemoteAudio;
 use Laravel\Ai\Files\RemoteDocument;
 use Laravel\Ai\Files\RemoteImage;
-use Laravel\Ai\Files\StoredAudio;
 use Laravel\Ai\Files\StoredDocument;
 use Laravel\Ai\Files\StoredImage;
 
@@ -86,31 +84,15 @@ trait MapsAttachments
                 $attachment instanceof Base64Audio => [
                     'type' => 'input_audio',
                     'input_audio' => [
-                        'format' => $this->getAudioFormat($attachment->mime),
+                        'format' => $this->audioFormat($attachment->mime ?? 'audio/mp3'),
                         'data' => $attachment->base64,
                     ],
                 ],
-                $attachment instanceof RemoteAudio => [
+                $attachment instanceof Audio => [
                     'type' => 'input_audio',
                     'input_audio' => [
-                        'format' => $this->getAudioFormat($attachment->mimeType()),
+                        'format' => $this->audioFormat($attachment->mimeType() ?? 'audio/mp3'),
                         'data' => base64_encode($attachment->content()),
-                    ],
-                ],
-                $attachment instanceof LocalAudio => [
-                    'type' => 'input_audio',
-                    'input_audio' => [
-                        'format' => $this->getAudioFormat($attachment->mimeType()),
-                        'data' => base64_encode(file_get_contents($attachment->path)),
-                    ],
-                ],
-                $attachment instanceof StoredAudio => [
-                    'type' => 'input_audio',
-                    'input_audio' => [
-                        'format' => $this->getAudioFormat($attachment->mimeType()),
-                        'data' => base64_encode(
-                            (string) Storage::disk($attachment->disk)->get($attachment->path)
-                        ),
                     ],
                 ],
                 $attachment instanceof UploadedFile && $this->isImage($attachment) => [
@@ -120,7 +102,7 @@ trait MapsAttachments
                 $attachment instanceof UploadedFile && $this->isAudio($attachment) => [
                     'type' => 'input_audio',
                     'input_audio' => [
-                        'format' => $this->getAudioFormat($attachment->getClientMimeType()),
+                        'format' => $this->audioFormat($attachment->getClientMimeType()),
                         'data' => base64_encode($attachment->get()),
                     ],
                 ],
@@ -156,17 +138,5 @@ trait MapsAttachments
     protected function isAudio(UploadedFile $attachment): bool
     {
         return str_starts_with($attachment->getClientMimeType(), 'audio/');
-    }
-
-    /**
-     * Transform a MIME type into an OpenRouter audio format.
-     */
-    protected function getAudioFormat(?string $mimeType): string
-    {
-        if (! $mimeType) {
-            return 'mp3';
-        }
-
-        return str_replace('audio/', '', $mimeType);
     }
 }
