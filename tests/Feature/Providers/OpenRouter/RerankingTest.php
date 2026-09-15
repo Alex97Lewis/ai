@@ -3,6 +3,7 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Laravel\Ai\Exceptions\AiException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\Reranking;
@@ -99,6 +100,14 @@ test('reranking throws when the API returns an error', function (): void {
 
     Reranking::of(['Doc A', 'Doc B'])->rerank('query', provider: 'openrouter', model: 'cohere/rerank-v3.5');
 })->throws(RequestException::class);
+
+test('reranking error in 200 response throws ai exception', function (): void {
+    Http::fake(['openrouter.ai/*' => Http::response([
+        'error' => ['type' => 'invalid_request_error', 'message' => 'The model does not exist.'],
+    ])]);
+
+    Reranking::of(['Doc A', 'Doc B'])->rerank('query', provider: 'openrouter', model: 'cohere/rerank-v3.5');
+})->throws(AiException::class, 'OpenRouter Error');
 
 test('reranking rate limit response throws rate limited exception', function (): void {
     Http::fake(['openrouter.ai/*' => Http::response(['message' => 'rate limit exceeded'], 429)]);
