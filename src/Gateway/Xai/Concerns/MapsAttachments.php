@@ -16,9 +16,12 @@ use Laravel\Ai\Files\RemoteDocument;
 use Laravel\Ai\Files\RemoteImage;
 use Laravel\Ai\Files\StoredDocument;
 use Laravel\Ai\Files\StoredImage;
+use Laravel\Ai\Gateway\Concerns\ResolvesDocumentFilenames;
 
 trait MapsAttachments
 {
+    use ResolvesDocumentFilenames;
+
     /**
      * Map the given Laravel attachments to xAI content parts.
      */
@@ -63,7 +66,7 @@ trait MapsAttachments
                 $attachment instanceof LocalDocument => [
                     'type' => 'input_file',
                     'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(file_get_contents($attachment->path)),
-                    'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
+                    'filename' => $attachment->name(),
                 ],
                 $attachment instanceof RemoteDocument => array_filter([
                     'type' => 'input_file',
@@ -75,7 +78,7 @@ trait MapsAttachments
                     'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(
                         (string) Storage::disk($attachment->disk)->get($attachment->path)
                     ),
-                    'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
+                    'filename' => $attachment->name(),
                 ],
                 $attachment instanceof UploadedFile && $this->isImage($attachment) => [
                     'type' => 'input_image',
@@ -103,18 +106,5 @@ trait MapsAttachments
             'image/webp',
         ],
             true);
-    }
-
-    protected function fallbackFilename(?string $mimeType): string
-    {
-        return 'document'.match ($mimeType) {
-            'text/plain' => '.txt',
-            'text/markdown' => '.md',
-            'text/csv' => '.csv',
-            'text/html' => '.html',
-            'application/pdf' => '.pdf',
-            'application/json' => '.json',
-            default => '',
-        };
     }
 }

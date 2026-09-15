@@ -15,9 +15,12 @@ use Laravel\Ai\Files\RemoteDocument;
 use Laravel\Ai\Files\RemoteImage;
 use Laravel\Ai\Files\StoredDocument;
 use Laravel\Ai\Files\StoredImage;
+use Laravel\Ai\Gateway\Concerns\ResolvesDocumentFilenames;
 
 trait MapsAttachments
 {
+    use ResolvesDocumentFilenames;
+
     /**
      * Map the given Laravel attachments to Chat Completions content parts.
      */
@@ -59,7 +62,7 @@ trait MapsAttachments
                 $attachment instanceof LocalDocument => [
                     'type' => 'file',
                     'file' => [
-                        'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
+                        'filename' => $attachment->name(),
                         'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(file_get_contents($attachment->path)),
                     ],
                 ],
@@ -73,7 +76,7 @@ trait MapsAttachments
                 $attachment instanceof StoredDocument => [
                     'type' => 'file',
                     'file' => [
-                        'filename' => $attachment->name() ?? $this->fallbackFilename($attachment->mimeType()),
+                        'filename' => $attachment->name(),
                         'file_data' => 'data:'.($attachment->mimeType() ?? 'application/octet-stream').';base64,'.base64_encode(
                             (string) Storage::disk($attachment->disk)->get($attachment->path)
                         ),
@@ -107,18 +110,5 @@ trait MapsAttachments
             'image/webp',
         ],
             true);
-    }
-
-    protected function fallbackFilename(?string $mimeType): string
-    {
-        return 'document'.match ($mimeType) {
-            'text/plain' => '.txt',
-            'text/markdown' => '.md',
-            'text/csv' => '.csv',
-            'text/html' => '.html',
-            'application/pdf' => '.pdf',
-            'application/json' => '.json',
-            default => '',
-        };
     }
 }
