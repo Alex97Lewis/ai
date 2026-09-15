@@ -319,9 +319,10 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
             'audio/mp4', 'audio/m4a', 'audio/x-m4a' => 'm4a',
             'audio/flac', 'audio/x-flac' => 'flac',
             'audio/aac' => 'aac',
+            'audio/aiff', 'audio/x-aiff' => 'aiff',
             'audio/mpeg', 'audio/mp3' => 'mp3',
             default => throw new InvalidArgumentException(
-                "Unsupported audio MIME type [{$mimeType}] for OpenRouter transcription. Supported types: audio/wav, audio/mp3, audio/mpeg, audio/flac, audio/m4a, audio/mp4, audio/ogg, audio/webm, audio/aac."
+                "Unsupported audio MIME type [{$mimeType}] for OpenRouter. Supported types: audio/wav, audio/mp3, audio/mpeg, audio/flac, audio/m4a, audio/mp4, audio/ogg, audio/webm, audio/aac, audio/aiff."
             ),
         };
     }
