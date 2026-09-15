@@ -4,6 +4,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Files\Audio;
+use Laravel\Ai\Files\Base64Document;
 use Laravel\Ai\Files\LocalImage;
 use Tests\Fixtures\Agents\AssistantAgent;
 use Tests\Fixtures\Tools\FixedNumberGenerator;
@@ -85,6 +86,27 @@ test('local image attachment without explicit mime type detects mime from file',
         return $imageBlock !== null
             && str_starts_with((string) $imageBlock['image_url']['url'], 'data:image/png;base64,')
             && ! str_contains((string) $imageBlock['image_url']['url'], 'data:;base64,');
+    });
+});
+
+test('base64 document without an explicit name falls back to a mime-based filename', function (): void {
+    Http::fake(['*' => fakeOpenRouterResponse('I see a document')]);
+
+    $document = new Base64Document(base64_encode('fake-pdf-data'), 'application/pdf');
+
+    agent('You are helpful.')->prompt(
+        'What is in this document?',
+        attachments: [$document],
+        provider: 'openrouter',
+    );
+
+    Http::assertSent(function (Request $request): bool {
+        $body = json_decode($request->body(), true);
+        $userMsg = collect($body['messages'])->firstWhere('role', 'user');
+        $fileBlock = collect($userMsg['content'])->firstWhere('type', 'file');
+
+        return $fileBlock !== null
+            && $fileBlock['file']['filename'] === 'document.pdf';
     });
 });
 
