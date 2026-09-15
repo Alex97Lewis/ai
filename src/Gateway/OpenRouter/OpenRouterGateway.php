@@ -381,7 +381,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
 
         $data = $response->json();
 
-        $results = (new Collection($data['results'] ?? []))->map(fn (array $result): RankedDocument => new RankedDocument(
+        $results = (new Collection($data['results']))->map(fn (array $result): RankedDocument => new RankedDocument(
             index: $result['index'],
             document: $documents[$result['index']],
             score: $result['relevance_score'],
