@@ -35,6 +35,9 @@
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.5"
     },
+    "conflict": {
+        "aws/aws-sdk-php": "<3.369.1"
+    },
     "suggest": {
         "aws/aws-sdk-php": "Required to use the Bedrock provider.",
         "laravel/mcp": "Required to use MCP client tools or MCP server tools with Laravel AI agents."
