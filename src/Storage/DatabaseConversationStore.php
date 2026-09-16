@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Laravel\Ai\Approvals\PendingApproval;
+use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Contracts\PaginatesConversations;
 use Laravel\Ai\Contracts\ResolvesPendingApprovals;
@@ -37,6 +38,8 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
 
     /**
      * Get the participant's most recent conversation ID with the given agent.
+     *
+     * @param  class-string<Agent>  $agent
      */
     public function latestConversationId(string $participantType, string|int $participantId, string $agent): ?string
     {
@@ -83,18 +86,20 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
 
     /**
      * Store a new user message for the given conversation and return its ID.
+     *
+     * @param  class-string<Agent>  $agent
      */
-    public function storeUserMessage(string $conversationId, ?string $participantType, string|int|null $participantId, AgentPrompt $prompt): string
+    public function storeUserMessage(string $conversationId, ?string $participantType, string|int|null $participantId, string $agent, UserMessage $message): string
     {
         $messageId = (string) Str::uuid7();
 
         $now = now();
 
         $this->table($this->messagesTable())->insert($this->messageAttributes($messageId, $conversationId, $participantType, $participantId, $now, [
-            'agent' => $prompt->agent::class,
+            'agent' => $agent,
             'role' => 'user',
-            'content' => $prompt->prompt,
-            'attachments' => $prompt->attachments->toJson(),
+            'content' => $message->content,
+            'attachments' => $message->attachments->toJson(),
             'tool_calls' => '[]',
             'tool_results' => '[]',
             'usage' => '[]',
