@@ -13,7 +13,6 @@
     },
     "require": {
         "php": "^8.3",
-        "aws/aws-sdk-php": "^3.369.1",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/container": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",
@@ -25,6 +24,7 @@
         "laravel/serializable-closure": "^2.0"
     },
     "require-dev": {
+        "aws/aws-sdk-php": "^3.369.1",
         "driftingly/rector-laravel": "^2.5",
         "laravel/mcp": "^0.8",
         "laravel/pint": "^1.26",
@@ -36,6 +36,7 @@
         "rector/rector": "^2.5"
     },
     "suggest": {
+        "aws/aws-sdk-php": "Required to use the Bedrock provider.",
         "laravel/mcp": "Required to use MCP client tools or MCP server tools with Laravel AI agents."
     },
     "minimum-stability": "dev",
