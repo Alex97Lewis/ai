@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Laravel\Ai\Attributes\CacheInstructions;
 use Laravel\Ai\Attributes\CacheToolDefinitions;
+use Laravel\Ai\Concerns\JoinsReasoning;
 use Laravel\Ai\Contracts\Gateway\EmbeddingGateway;
 use Laravel\Ai\Contracts\Gateway\StepTextGateway;
 use Laravel\Ai\Contracts\Providers\EmbeddingProvider;
@@ -54,6 +55,7 @@ class BedrockTextGateway implements EmbeddingGateway, StepTextGateway
     use CreatesBedrockClient;
     use DecodesStructuredOutput;
     use HandlesFailoverErrors;
+    use JoinsReasoning;
     use MapsAttachments;
     use ParsesEmbeddings;
 
@@ -213,7 +215,19 @@ class BedrockTextGateway implements EmbeddingGateway, StepTextGateway
             meta: new Meta($provider->name(), $model),
             structured: $structuredOutput !== null ? $this->decodeStructuredOutput($structuredOutput) : null,
             providerContentBlocks: $providerContentBlocks,
+            reasoning: $this->extractReasoning($providerContentBlocks),
         );
+    }
+
+    /**
+     * Extract the reasoning text from Converse content blocks.
+     */
+    protected function extractReasoning(array $content): string
+    {
+        return static::joinReasoning(array_map(
+            fn (array $block): string => $block['reasoningContent']['reasoningText']['text'] ?? '',
+            $content,
+        ));
     }
 
     /**

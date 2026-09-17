@@ -3,6 +3,7 @@
 namespace Laravel\Ai\Gateway\Xai\Concerns;
 
 use Illuminate\Support\Collection;
+use Laravel\Ai\Concerns\JoinsReasoning;
 use Laravel\Ai\Exceptions\AiException;
 use Laravel\Ai\Gateway\Concerns\DecodesStructuredOutput;
 use Laravel\Ai\Gateway\StepResponse;
@@ -15,7 +16,7 @@ use Laravel\Ai\Responses\Data\Usage;
 
 trait ParsesTextResponses
 {
-    use DecodesStructuredOutput;
+    use DecodesStructuredOutput, JoinsReasoning;
 
     /**
      * Validate the xAI response data.
@@ -69,6 +70,7 @@ trait ParsesTextResponses
             meta: new Meta($provider->name(), $model, $citations),
             structured: $structured ? $this->decodeStructuredOutput($text) : null,
             continuationToken: $data['id'] ?? null,
+            reasoning: $this->extractReasoning($output),
         );
     }
 
@@ -77,13 +79,9 @@ trait ParsesTextResponses
      */
     protected function extractText(array $output): string
     {
-        $lastOutput = last($output);
+        $message = (new Collection($output))->where('type', 'message')->last();
 
-        if (is_array($lastOutput)) {
-            return $lastOutput['content'][0]['text'] ?? '';
-        }
-
-        return '';
+        return $message['content'][0]['text'] ?? '';
     }
 
     /**
@@ -138,7 +136,10 @@ trait ParsesTextResponses
      */
     protected function extractFinishReason(array $data): FinishReason
     {
-        $lastOutput = last($data['output'] ?? []);
+        $lastOutput = (new Collection($data['output'] ?? []))
+            ->reject(fn (array $item): bool => ($item['type'] ?? '') === 'reasoning')
+            ->last() ?? [];
+
         $status = $lastOutput['status'] ?? $data['status'] ?? '';
         $type = $lastOutput['type'] ?? '';
 
@@ -152,6 +153,21 @@ trait ParsesTextResponses
             },
             default => FinishReason::Unknown,
         };
+    }
+
+    /**
+     * Extract the reasoning text from the output array.
+     */
+    protected function extractReasoning(array $output): string
+    {
+        return static::joinReasoning(
+            (new Collection($output))
+                ->where('type', 'reasoning')
+                ->flatMap(fn (array $item): array => [
+                    (new Collection($item['summary'] ?? []))->pluck('text')->implode(''),
+                    (new Collection($item['content'] ?? []))->pluck('text')->implode(''),
+                ])
+        );
     }
 
     /**

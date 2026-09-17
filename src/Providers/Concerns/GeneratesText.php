@@ -92,11 +92,13 @@ trait GeneratesText
                             ->withMessages($response->messages)
                             ->withToolCallsAndResults($response->toolCalls, $response->toolResults)
                             ->withSteps($response->steps)
+                            ->withReasoning($response->reasoning)
                             ->withRawResponse($response->raw)
                         : (new AgentResponse($invocationId, $response->text, $response->usage, $response->meta))
                             ->withMessages($response->messages)
                             ->withToolCallsAndResults($response->toolCalls, $response->toolResults)
                             ->withSteps($response->steps)
+                            ->withReasoning($response->reasoning)
                             ->withRawResponse($response->raw);
 
                     $agentResponse->withPendingApprovals($response->pendingApprovals);

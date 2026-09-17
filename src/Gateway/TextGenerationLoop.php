@@ -10,6 +10,7 @@ use Laravel\Ai\Approvals\Approval;
 use Laravel\Ai\Approvals\Decision;
 use Laravel\Ai\Approvals\PendingApproval;
 use Laravel\Ai\Attributes\RepairToolCalls;
+use Laravel\Ai\Concerns\JoinsReasoning;
 use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Gateway\StepTextGateway;
 use Laravel\Ai\Contracts\HasMiddleware;
@@ -53,7 +54,7 @@ use Throwable;
 
 class TextGenerationLoop
 {
-    use HandlesToolApprovals, InvokesTools;
+    use HandlesToolApprovals, InvokesTools, JoinsReasoning;
 
     /**
      * The characters a tool must add before its unfinished output is reported again.
@@ -986,6 +987,7 @@ class TextGenerationLoop
             $result->finishReason,
             $result->usage,
             $result->meta,
+            $result->reasoning,
         ))->withRawResponse($result->raw);
     }
 
@@ -998,6 +1000,8 @@ class TextGenerationLoop
         ?StepResponse $lastResult,
     ): TextResponse {
         $finalStep = $steps->last();
+
+        $reasoningText = static::joinReasoning($steps->pluck('reasoning'));
 
         $totalUsage = $steps->reduce(
             fn (Usage $carry, Step $step): Usage => $carry->add($step->usage),
@@ -1017,14 +1021,14 @@ class TextGenerationLoop
                 toolResults: $newMessages
                     ->whereInstanceOf(ToolResultMessage::class)
                     ->flatMap(fn (ToolResultMessage $message): Collection => $message->toolResults),
-            )->withSteps($steps)->withRawResponse($lastResult->raw);
+            )->withSteps($steps)->withReasoning($reasoningText)->withRawResponse($lastResult->raw);
         }
 
         return (new TextResponse(
             $finalStep->text,
             $totalUsage,
             $finalStep->meta,
-        ))->withMessages($newMessages)->withSteps($steps)->withRawResponse($lastResult?->raw);
+        ))->withMessages($newMessages)->withSteps($steps)->withReasoning($reasoningText)->withRawResponse($lastResult?->raw);
     }
 
     /**

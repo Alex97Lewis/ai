@@ -38,6 +38,7 @@ use Laravel\Ai\Streaming\Events\ReasoningEnd;
 use Laravel\Ai\Streaming\Events\ReasoningStart;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolApprovalRequest;
+use Tests\Fixtures\Agents\RememberingAssistantAgent;
 use Tests\Fixtures\Agents\RememberingToolUsingAgent;
 use Tests\Fixtures\Agents\ToolUsingAgent;
 
@@ -1538,6 +1539,38 @@ test('it records the reasoning a streamed turn produced into the message meta', 
     $store->storeAssistantMessage($conversationId, 'user', 1, $prompt, $response);
 
     $record = DB::table('agent_conversation_messages')->where('role', 'assistant')->first();
+
+    expect(json_decode((string) $record->meta, true))
+        ->toHaveKey('reasoning', 'They want the temperature.');
+});
+
+test('it records the reasoning a prompted turn produced into the message meta', function (): void {
+    Config::set('ai.conversations.generate_title', false);
+
+    Http::fake(['api.deepseek.com/*' => Http::response([
+        'id' => 'chatcmpl-reasoner-1',
+        'object' => 'chat.completion',
+        'model' => 'deepseek-reasoner',
+        'choices' => [[
+            'index' => 0,
+            'message' => [
+                'role' => 'assistant',
+                'reasoning_content' => 'They want the temperature.',
+                'content' => 'It is 12°C.',
+            ],
+            'finish_reason' => 'stop',
+        ]],
+        'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+    ])]);
+
+    $response = (new RememberingAssistantAgent)
+        ->forUser((object) ['id' => 1])
+        ->prompt('How cold is it?', provider: 'deepseek', model: 'deepseek-reasoner');
+
+    $record = DB::table('agent_conversation_messages')
+        ->where('conversation_id', $response->conversationId)
+        ->where('role', 'assistant')
+        ->first();
 
     expect(json_decode((string) $record->meta, true))
         ->toHaveKey('reasoning', 'They want the temperature.');
