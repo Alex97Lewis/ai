@@ -83,6 +83,7 @@ dataset('agent-document-providers', [
     'anthropic' => ['anthropic', 'ANTHROPIC_API_KEY', 'claude-haiku-4-5-20251001'],
     'openai' => ['openai', 'OPENAI_API_KEY', 'gpt-5.4-nano'],
     'gemini' => ['gemini', 'GEMINI_API_KEY', 'gemini-3.1-flash-lite'],
+    'mistral' => ['mistral', 'MISTRAL_API_KEY', 'mistral-small-latest'],
 ]);
 
 dataset('agent-image-providers', [
