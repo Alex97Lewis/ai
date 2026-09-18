@@ -139,6 +139,10 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
             'approval_state' => $this->approvalState($response),
         ]));
 
+        if (! $response->hasPendingApprovals()) {
+            $this->forgetReplayBlocks($conversationId);
+        }
+
         $this->touchConversation($conversationId, $now);
 
         return $messageId;
@@ -186,11 +190,39 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
         return collect($toolCalls)->map(function (ToolCall $toolCall) use ($results): array {
             $result = $results->get($toolCall->id);
 
+            $stored = Arr::except($toolCall->toArray(), ['reasoning_id', 'reasoning_summary', 'reasoning_encrypted_content']);
+
+            if ($toolCall->thoughtSignature === null) {
+                unset($stored['thought_signature']);
+            }
+
             return [
-                ...$toolCall->toArray(),
+                ...$stored,
                 ...$result === null ? [] : Arr::only($result->toArray(), ['result', 'denied', 'failed']),
             ];
         })->values()->all();
+    }
+
+    /**
+     * Drop the raw provider blocks of the paused rows a now-completed turn resumed from.
+     */
+    protected function forgetReplayBlocks(string $conversationId): void
+    {
+        $this->table($this->messagesTable())
+            ->where('conversation_id', $conversationId)
+            ->whereNotNull('approval_state')
+            ->get(['id', 'steps'])
+            ->each(function (object $record): void {
+                $steps = $this->decodedSteps($record);
+
+                if ($steps->every(fn (array $step): bool => $step['replay_blocks'] === [])) {
+                    return;
+                }
+
+                $this->table($this->messagesTable())->where('id', $record->id)->update([
+                    'steps' => $steps->map(fn (array $step): array => [...$step, 'replay_blocks' => []])->toJson(),
+                ]);
+            });
     }
 
     /**
@@ -319,27 +351,9 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
             ->reverse()
             ->values();
 
-        $replayFrom = $this->pausedTurnStartIndex($records);
-
-        return $records->flatMap(fn (object $record, int $index): array => $record->role === 'user'
+        return $records->flatMap(fn (object $record): array => $record->role === 'user'
             ? [$this->userMessageFrom($record)]
-            : $this->assistantTurnFrom($record, withReplayBlocks: $index >= $replayFrom));
-    }
-
-    /**
-     * Get the index the turn awaiting a decision starts at, or a past-the-end index when no turn is paused.
-     *
-     * @param  Collection<int, object>  $records
-     */
-    protected function pausedTurnStartIndex(Collection $records): int
-    {
-        if (! $this->awaitsDecision($records->last())) {
-            return $records->count();
-        }
-
-        $turnStart = $records->reverse()->search(fn (object $record): bool => $record->role === 'user');
-
-        return $turnStart === false ? 0 : $turnStart + 1;
+            : $this->assistantTurnFrom($record));
     }
 
     /**
@@ -359,12 +373,12 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
      *
      * @return array<int, Message>
      */
-    protected function assistantTurnFrom(object $record, bool $withReplayBlocks): array
+    protected function assistantTurnFrom(object $record): array
     {
         $pending = $this->pausedCallIds($record);
         $provider = $this->decoded($record->meta)['provider'] ?? null;
 
-        return $this->decodedSteps($record)->flatMap(function (array $step) use ($pending, $provider, $withReplayBlocks): array {
+        return $this->decodedSteps($record)->flatMap(function (array $step) use ($pending, $provider): array {
             $content = $step['content'];
 
             $replayed = collect($step['tool_calls'])
@@ -374,7 +388,8 @@ class DatabaseConversationStore implements ConversationStore, PaginatesConversat
             $toolCalls = $replayed->map(ToolCall::fromArray(...));
             $toolResults = $replayed->filter($this->isAnswered(...))->map(ToolResult::fromArray(...))->values();
 
-            $replayBlocks = $withReplayBlocks ? $step['replay_blocks'] : [];
+            // Raw blocks still name a dropped call, so a step missing one rebuilds generically rather than replaying a call no result answers...
+            $replayBlocks = $replayed->count() === count($step['tool_calls']) ? $step['replay_blocks'] : [];
 
             $isBlank = $content === '' && $toolCalls->isEmpty() && $replayBlocks === [];
 
