@@ -6,6 +6,7 @@ test('reranking usage to array appends the search units to the base usage counts
     expect((new RerankingUsage(320, 2.5))->toArray())->toBe([
         'input_tokens' => 320,
         'output_tokens' => 0,
+        'cost' => null,
         'search_units' => 2.5,
     ]);
 });

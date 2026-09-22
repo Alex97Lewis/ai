@@ -50,8 +50,31 @@ test('usage to array serializes every count', function (): void {
     expect($usage->toArray())->toBe([
         'input_tokens' => 100,
         'output_tokens' => 50,
+        'cost' => null,
         'cache_read_input_tokens' => 10,
         'cache_write_input_tokens' => 25,
         'reasoning_tokens' => null,
     ])->and($usage->jsonSerialize())->toBe($usage->toArray());
+});
+
+test('usage defaults the cost to unreported', function (): void {
+    expect((new TextUsage(100, 50))->cost)->toBeNull();
+});
+
+test('usage add sums the reported costs', function (): void {
+    $combined = (new TextUsage(100, 50, cost: 0.0025))->add(new TextUsage(50, 25, cost: 0.0011));
+
+    expect($combined->cost)->toBe(0.0036);
+});
+
+test('usage add keeps the cost null only when neither side reported it', function (): void {
+    expect((new TextUsage(1, 1, cost: 0.5))->add(new TextUsage(1, 1))->cost)->toBe(0.5)
+        ->and((new TextUsage(1, 1))->add(new TextUsage(1, 1))->cost)->toBeNull();
+});
+
+test('usage round trips the cost through to array and from array', function (): void {
+    $usage = new TextUsage(100, 50, 10, 25, null, 0.0042);
+
+    expect($usage->toArray()['cost'])->toBe(0.0042)
+        ->and(TextUsage::fromArray($usage->toArray()))->toEqual($usage);
 });

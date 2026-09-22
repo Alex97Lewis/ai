@@ -138,7 +138,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
                 $image['b64_json'] ?? '',
                 $image['media_type'] ?? 'image/png',
             )),
-            new ImageUsage($data['usage']['prompt_tokens'] ?? 0, $data['usage']['completion_tokens'] ?? 0),
+            new ImageUsage($data['usage']['prompt_tokens'] ?? 0, $data['usage']['completion_tokens'] ?? 0, cost: $data['usage']['cost'] ?? null),
             new Meta($provider->name(), $model),
         );
     }
@@ -331,7 +331,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
 
         return new EmbeddingsResponse(
             (new Collection($data['data'] ?? []))->pluck('embedding')->all(),
-            new Usage($data['usage']['prompt_tokens'] ?? 0),
+            new Usage($data['usage']['prompt_tokens'] ?? 0, cost: $data['usage']['cost'] ?? null),
             new Meta($provider->name(), $model),
         );
     }
@@ -373,6 +373,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
             new RerankingUsage(
                 inputTokens: $data['usage']['total_tokens'] ?? 0,
                 searchUnits: $data['usage']['search_units'] ?? null,
+                cost: $data['usage']['cost'] ?? null,
             ),
             new Meta($provider->name(), $model),
         );
