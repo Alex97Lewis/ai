@@ -9,6 +9,7 @@ test('transcription usage to array extends the base usage array with the audio d
     expect($usage->toArray())->toBe([
         'input_tokens' => 14,
         'output_tokens' => 8,
+        'cost' => null,
         'cache_read_input_tokens' => null,
         'cache_write_input_tokens' => null,
         'reasoning_tokens' => null,
@@ -22,6 +23,7 @@ test('transcription usage can be created from a text usage', function (): void {
     expect($usage->toArray())->toBe([
         'input_tokens' => 14,
         'output_tokens' => 8,
+        'cost' => null,
         'cache_read_input_tokens' => 4,
         'cache_write_input_tokens' => 2,
         'reasoning_tokens' => 6,

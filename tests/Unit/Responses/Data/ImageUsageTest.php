@@ -8,6 +8,7 @@ test('image usage to array appends the image token counts to the text usage coun
     expect($usage->toArray())->toBe([
         'input_tokens' => 100,
         'output_tokens' => 50,
+        'cost' => null,
         'cache_read_input_tokens' => 10,
         'cache_write_input_tokens' => null,
         'reasoning_tokens' => 5,

@@ -16,8 +16,9 @@ readonly class ImageUsage extends TextUsage
         ?int $reasoningTokens = null,
         public ?int $imageInputTokens = null,
         public ?int $imageOutputTokens = null,
+        ?float $cost = null,
     ) {
-        parent::__construct($inputTokens, $outputTokens, $cacheReadInputTokens, $cacheWriteInputTokens, $reasoningTokens);
+        parent::__construct($inputTokens, $outputTokens, $cacheReadInputTokens, $cacheWriteInputTokens, $reasoningTokens, $cost);
     }
 
     /**
